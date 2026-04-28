@@ -122,6 +122,13 @@ function App() {
 
   useEffect(() => { if (user) loadTickets(); }, [user, loadTickets]);
 
+  // Auto-refresh cada 30 segundos
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => loadTickets(), 30000);
+    return () => clearInterval(interval);
+  }, [user, loadTickets]);
+
   const persist = async (updated) => {
     setTickets(updated);
     setSyncing(true);
@@ -153,11 +160,7 @@ function App() {
 
   const can = (p) => user && ROLES[user.role].permissions.includes(p);
 
-  const visible = () => {
-    if (can("view_all"))  return tickets;
-    if (can("view_team")) return tickets.filter(t => t.createdBy === user.name || t.assignedTo === user.name);
-    return tickets.filter(t => t.createdBy === user.name || t.assignedTo === user.name);
-  };
+  const visible = () => tickets; // Todos ven todos los tickets
 
   const createTicket = async () => {
     if (!form.title || !form.assignedTo) { alert("Completa título y asignado"); return; }
