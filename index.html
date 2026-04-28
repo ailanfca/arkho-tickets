@@ -164,9 +164,27 @@ function App() {
 
   const createTicket = async () => {
     if (!form.title || !form.assignedTo) { alert("Completa título y asignado"); return; }
+    // Recargar primero para tener el estado más reciente de Sheets
+    setSyncing(true);
+    let latest = tickets;
+    try {
+      const data = await apiGet();
+      latest = data.map(r => ({
+        id: r.TicketNumber || String(Date.now()),
+        ticketNumber: r.TicketNumber || "", title: r.Title || "",
+        status: r.Status || "OPEN", priority: r.Priority || "normal",
+        createdBy: r.CreatedBy || "", createdAt: r.CreatedAt || "",
+        assignedTo: r.AssignedTo || "", completedBy: r.CompletedBy || "",
+        completedAt: r.CompletedAt || "", location: r.Location || "",
+        category: r.Category || "", description: r.Description || "",
+      }));
+      setTickets(latest);
+    } catch { /* usar tickets locales si falla */ }
+    finally { setSyncing(false); }
+
     const t = {
       id:           Date.now(),
-      ticketNumber: `TKT-${String(tickets.length + 1).padStart(5,"0")}`,
+      ticketNumber: `TKT-${String(latest.length + 1).padStart(5,"0")}`,
       ...form,
       status:      "OPEN",
       createdBy:   user.name,
@@ -174,22 +192,40 @@ function App() {
       completedBy: "",
       completedAt: "",
     };
-    await persist([t, ...tickets]);
+    await persist([t, ...latest]);
     setForm({ title:"", description:"", priority:"normal", assignedTo:"", location:"", category:"maintenance" });
     setView("tickets");
   };
 
+  const getFreshTickets = async () => {
+    try {
+      const data = await apiGet();
+      return data.map(r => ({
+        id: r.TicketNumber || String(Date.now()),
+        ticketNumber: r.TicketNumber || "", title: r.Title || "",
+        status: r.Status || "OPEN", priority: r.Priority || "normal",
+        createdBy: r.CreatedBy || "", createdAt: r.CreatedAt || "",
+        assignedTo: r.AssignedTo || "", completedBy: r.CompletedBy || "",
+        completedAt: r.CompletedAt || "", location: r.Location || "",
+        category: r.Category || "", description: r.Description || "",
+      }));
+    } catch { return tickets; }
+  };
+
   const completeTicket = async (id) => {
-    const updated = tickets.map(t => t.id === id
+    const latest = await getFreshTickets();
+    const updated = latest.map(t => t.id === id
       ? { ...t, status:"COMPLETED", completedBy: user.name, completedAt: new Date().toLocaleString("es-MX") }
       : t);
+    setTickets(updated);
     await persist(updated);
   };
 
   const deleteTicket = async (id) => {
     if (!can("delete")) return;
     if (!window.confirm("¿Eliminar este ticket?")) return;
-    await persist(tickets.filter(t => t.id !== id));
+    const latest = await getFreshTickets();
+    await persist(latest.filter(t => t.id !== id));
   };
 
   const SyncBadge = () => {
