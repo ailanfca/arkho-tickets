@@ -231,7 +231,7 @@ function App() {
   };
 
   const Nav = () => (
-    <div className="bg-slate-700 text-white px-6 py-3 flex flex-wrap gap-3 items-center">
+    <div className="bg-slate-700 text-white px-4 py-3 flex flex-wrap gap-2 items-center">
       {[["dashboard","📊 Dashboard"],["tickets","🎫 Tickets"],["create","➕ Crear"]].map(([v,l]) => (
         <button key={v} onClick={() => setView(v)}
           className={`px-4 py-1.5 rounded font-medium text-sm transition
@@ -251,7 +251,7 @@ function App() {
   );
 
   const Header = ({ title }) => (
-    <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-5 shadow-lg">
+    <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 shadow-lg">
       <div className="max-w-5xl mx-auto flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">{title}</h1>
@@ -306,7 +306,7 @@ function App() {
         <Header title="Dashboard"/>
         <Nav/>
         <div className="max-w-5xl mx-auto p-6 space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[["Total","text-blue-400",stats.total],["Abiertos","text-red-400",stats.open],
               ["En Progreso","text-yellow-400",stats.inProgress],["Completados","text-green-400",stats.completed]
             ].map(([l,c,v]) => (
@@ -355,7 +355,7 @@ function App() {
               </div>
               <Badge s={t.status}/>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-3">
               <p><span className="text-slate-400">Asignado:</span> {t.assignedTo}</p>
               <p><span className="text-slate-400">Prioridad:</span> {t.priority}</p>
               <p><span className="text-slate-400">Ubicación:</span> {t.location}</p>
