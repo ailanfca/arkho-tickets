@@ -91,26 +91,11 @@ function App() {
     assignedTo:"", location:"", category:"maintenance"
   });
 
-  const loadTickets = useCallback(async () => {
+    const loadTickets = useCallback(async () => {
     setSyncing(true);
     try {
       const data = await apiGet();
-      const parsed = data.map(r => ({
-        id:           r.TicketNumber || String(Date.now()),
-        ticketNumber: r.TicketNumber || "",
-        title:        r.Title        || "",
-        status:       r.Status       || "OPEN",
-        priority:     r.Priority     || "normal",
-        createdBy:    r.CreatedBy    || "",
-        createdAt:    r.CreatedAt    || "",
-        assignedTo:   r.AssignedTo   || "",
-        completedBy:  r.CompletedBy  || "",
-        completedAt:  r.CompletedAt  || "",
-        location:     r.Location     || "",
-        category:     r.Category     || "",
-        description:  r.Description  || "",
-      }));
-      setTickets(parsed);
+      setTickets(data.map(parseRow));
       setOnline(true);
       setLastSync(new Date().toLocaleTimeString("es-MX"));
     } catch {
@@ -197,18 +182,26 @@ function App() {
     setView("tickets");
   };
 
+  const parseRow = (r) => ({
+    id:           r.TicketNumber || "",   // id = ticketNumber siempre
+    ticketNumber: r.TicketNumber || "",
+    title:        r.Title        || "",
+    status:       r.Status       || "OPEN",
+    priority:     r.Priority     || "normal",
+    createdBy:    r.CreatedBy    || "",
+    createdAt:    r.CreatedAt    || "",
+    assignedTo:   r.AssignedTo   || "",
+    completedBy:  r.CompletedBy  || "",
+    completedAt:  r.CompletedAt  || "",
+    location:     r.Location     || "",
+    category:     r.Category     || "",
+    description:  r.Description  || "",
+  });
+
   const getFreshTickets = async () => {
     try {
       const data = await apiGet();
-      return data.map(r => ({
-        id: r.TicketNumber || String(Date.now()),
-        ticketNumber: r.TicketNumber || "", title: r.Title || "",
-        status: r.Status || "OPEN", priority: r.Priority || "normal",
-        createdBy: r.CreatedBy || "", createdAt: r.CreatedAt || "",
-        assignedTo: r.AssignedTo || "", completedBy: r.CompletedBy || "",
-        completedAt: r.CompletedAt || "", location: r.Location || "",
-        category: r.Category || "", description: r.Description || "",
-      }));
+      return data.map(parseRow);
     } catch { return tickets; }
   };
 
