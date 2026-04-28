@@ -49,8 +49,11 @@ const USERS = [
 ];
 
 async function apiGet() {
-  const res  = await fetch(`${SCRIPT_URL}?action=getAll`);
-  const json = await res.json();
+  // Usar allorigins como proxy CORS para leer de Sheets de forma confiable
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL + "?action=getAll")}`;
+  const res  = await fetch(url);
+  const data = await res.json();
+  const json = JSON.parse(data.contents);
   return json.tickets || [];
 }
 
