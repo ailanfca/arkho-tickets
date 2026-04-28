@@ -55,8 +55,12 @@ async function apiGet() {
 }
 
 async function apiSave(tickets) {
+  // no-cors evita el bloqueo CORS; no podemos leer la respuesta
+  // pero el POST llega correctamente al Apps Script
   await fetch(SCRIPT_URL, {
     method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
     body: JSON.stringify({ action: "save", tickets }),
   });
 }
@@ -131,9 +135,11 @@ function App() {
         Category:     t.category,
         Description:  t.description,
       })));
+      // Con no-cors asumimos éxito si no hay excepción
       setOnline(true);
       setLastSync(new Date().toLocaleTimeString("es-MX"));
-    } catch {
+    } catch(err) {
+      console.error("Save error:", err);
       setOnline(false);
     } finally {
       setSyncing(false);
