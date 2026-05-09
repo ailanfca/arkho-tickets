@@ -60,8 +60,30 @@ function jsonp(url) {
 }
 
 async function apiGet() {
-  const data = await jsonp(`${SCRIPT_URL}?action=getAll`);
-  return data.tickets || [];
+  // Intentar fetch directo primero (funciona en Chrome/Firefox)
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getAll`, { redirect: "follow" });
+    const json = await res.json();
+    return json.tickets || [];
+  } catch {
+    // Fallback JSONP para Safari iOS
+    return new Promise((resolve) => {
+      const cb = "cb_" + Date.now();
+      const s  = document.createElement("script");
+      s.src    = `${SCRIPT_URL}?action=getAll&callback=${cb}`;
+      window[cb] = (data) => {
+        delete window[cb];
+        if (document.body.contains(s)) document.body.removeChild(s);
+        resolve(data.tickets || []);
+      };
+      s.onerror = () => {
+        delete window[cb];
+        if (document.body.contains(s)) document.body.removeChild(s);
+        resolve([]);
+      };
+      document.body.appendChild(s);
+    });
+  }
 }
 
 function apiSave(tickets) {
@@ -87,7 +109,8 @@ function App() {
   const [lastSync, setLastSync] = useState(null);
   const [form,     setForm]     = useState({
     title:"", description:"", priority:"normal",
-    assignedTo:"", location:"", category:"maintenance"
+    assignedTo:"", location:"", category:"maintenance",
+    scheduledDate:"", dueDate:""
   });
 
     const loadTickets = useCallback(async () => {
@@ -118,18 +141,20 @@ function App() {
     setSyncing(true);
     try {
       await apiSave(updated.map(t => ({
-        TicketNumber: t.ticketNumber,
-        Title:        t.title,
-        Status:       t.status,
-        Priority:     t.priority,
-        CreatedBy:    t.createdBy,
-        CreatedAt:    t.createdAt,
-        AssignedTo:   t.assignedTo,
-        CompletedBy:  t.completedBy || "",
-        CompletedAt:  t.completedAt || "",
-        Location:     t.location,
-        Category:     t.category,
-        Description:  t.description,
+        TicketNumber:  t.ticketNumber,
+        Title:         t.title,
+        Status:        t.status,
+        Priority:      t.priority,
+        CreatedBy:     t.createdBy,
+        CreatedAt:     t.createdAt,
+        AssignedTo:    t.assignedTo,
+        CompletedBy:   t.completedBy   || "",
+        CompletedAt:   t.completedAt   || "",
+        Location:      t.location,
+        Category:      t.category,
+        Description:   t.description,
+        DueDate:       t.dueDate       || "",
+        ScheduledDate: t.scheduledDate || "",
       })));
       // Con no-cors asumimos éxito si no hay excepción
       setOnline(true);
@@ -182,19 +207,21 @@ function App() {
   };
 
   const parseRow = (r) => ({
-    id:           r.TicketNumber || "",   // id = ticketNumber siempre
-    ticketNumber: r.TicketNumber || "",
-    title:        r.Title        || "",
-    status:       r.Status       || "OPEN",
-    priority:     r.Priority     || "normal",
-    createdBy:    r.CreatedBy    || "",
-    createdAt:    r.CreatedAt    || "",
-    assignedTo:   r.AssignedTo   || "",
-    completedBy:  r.CompletedBy  || "",
-    completedAt:  r.CompletedAt  || "",
-    location:     r.Location     || "",
-    category:     r.Category     || "",
-    description:  r.Description  || "",
+    id:            r.TicketNumber  || "",
+    ticketNumber:  r.TicketNumber  || "",
+    title:         r.Title         || "",
+    status:        r.Status        || "OPEN",
+    priority:      r.Priority      || "normal",
+    createdBy:     r.CreatedBy     || "",
+    createdAt:     r.CreatedAt     || "",
+    assignedTo:    r.AssignedTo    || "",
+    completedBy:   r.CompletedBy   || "",
+    completedAt:   r.CompletedAt   || "",
+    location:      r.Location      || "",
+    category:      r.Category      || "",
+    description:   r.Description   || "",
+    scheduledDate: r.ScheduledDate || "",
+    dueDate:       r.DueDate       || "",
   });
 
   const getFreshTickets = async () => {
@@ -275,7 +302,7 @@ function App() {
   if (!user) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
       <div className="bg-slate-700 rounded-xl shadow-2xl p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-white text-center mb-1">TICKETS ARKHOS</h1>
+        <h1 className="text-2xl font-bold text-white text-center mb-1">🎫 TICKETS ARKHO</h1>
         <p className="text-slate-400 text-center text-sm mb-6">Gestión de Limpieza y Mantenimiento</p>
         <div className="space-y-3">
           {USERS.map(u => (
@@ -360,6 +387,8 @@ function App() {
               <p><span className="text-slate-400">Prioridad:</span> {t.priority}</p>
               <p><span className="text-slate-400">Ubicación:</span> {t.location}</p>
               <p><span className="text-slate-400">Categoría:</span> {t.category}</p>
+              {t.scheduledDate && <p><span className="text-slate-400">Fecha de realización:</span> {t.scheduledDate}</p>}
+              {t.dueDate && <p><span className={`font-medium ${new Date(t.dueDate) < new Date() && t.status !== "COMPLETED" ? "text-red-400" : "text-slate-400"}`}>Fecha límite:</span> {t.dueDate}</p>}
             </div>
             {t.description && (
               <p className="text-sm text-slate-300 bg-slate-600 p-2 rounded mb-3">{t.description}</p>
@@ -441,6 +470,16 @@ function App() {
                   <option key={v} value={v}>{l}</option>
                 )}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Fecha de realización</label>
+              <input type="date" value={form.scheduledDate} onChange={e => setForm({...form, scheduledDate: e.target.value})}
+                className="w-full px-3 py-2 rounded bg-slate-600 border border-slate-500 focus:border-blue-500 focus:outline-none text-white"/>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Fecha límite</label>
+              <input type="date" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})}
+                className="w-full px-3 py-2 rounded bg-slate-600 border border-slate-500 focus:border-blue-500 focus:outline-none text-white"/>
             </div>
           </div>
           <button onClick={createTicket} disabled={syncing}
